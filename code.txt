@@ -1,0 +1,278 @@
+package JavaApplication2;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
+class InventoryManager {
+    private static InventoryManager instance;
+    private final Map<String, Item> inventory = new HashMap<>();
+
+    private InventoryManager() {}
+
+    public static synchronized InventoryManager getInstance() {
+        if (instance == null) {
+            instance = new InventoryManager();
+        }
+        return instance;
+    }
+
+    public void addItem(Item item) {
+        inventory.put(item.getName(), item);
+    }
+
+    public Map<String, Item> getInventory() {
+        return inventory;
+    }
+}
+
+class Vendor {
+    private final String name;
+    private final String type;
+
+    public Vendor(String name, String type) {
+        this.name = name;
+        this.type = type;
+    }
+
+    @Override
+    public String toString() {
+        return name + " (" + type + ")";
+    }
+}
+
+abstract class Item {
+    private final String name;
+    private final double price;
+    private final Vendor vendor;
+
+    public Item(String name, double price, Vendor vendor) {
+        this.name = name;
+        this.price = price;
+        this.vendor = vendor;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    public Vendor getVendor() {
+        return vendor;
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " - " + name + ": $" + price + " (Vendor: " + vendor + ")";
+    }
+}
+
+class Electronics extends Item {
+    public Electronics(String name, double price, Vendor vendor) {
+        super(name, price, vendor);
+    }
+}
+
+class Furniture extends Item {
+    public Furniture(String name, double price, Vendor vendor) {
+        super(name, price, vendor);
+    }
+}
+
+class Groceries extends Item {
+    public Groceries(String name, double price, Vendor vendor) {
+        super(name, price, vendor);
+    }
+}
+
+public class JavaApplication2 {
+    private static final ArrayList<Vendor> vendors = new ArrayList<>();
+    private static final JTextArea inventoryArea = new JTextArea();
+    private static JTable reportTable;
+    private static DefaultTableModel reportTableModel;
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            JFrame mainFrame = new JFrame("Inventory Management System");
+            mainFrame.setSize(900, 600);
+            mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            mainFrame.setLayout(new BorderLayout());
+
+            JTabbedPane tabbedPane = new JTabbedPane();
+            tabbedPane.setBackground(new Color(220, 220, 220));
+            tabbedPane.setForeground(Color.BLACK);
+
+            JPanel inventoryPanel = new JPanel(new BorderLayout());
+            inventoryArea.setEditable(false);
+            inventoryArea.setFont(new Font("Arial", Font.PLAIN, 14));
+            inventoryArea.setBackground(new Color(245, 245, 245));
+            inventoryPanel.add(new JScrollPane(inventoryArea), BorderLayout.CENTER);
+            tabbedPane.addTab("Inventory", inventoryPanel);
+
+            // Create a report table with columns: Name, Price, Vendor
+            String[] columnNames = {"Item Name", "Price", "Vendor"};
+            reportTableModel = new DefaultTableModel(columnNames, 0);
+            reportTable = new JTable(reportTableModel);
+
+            // Update the report panel to use a table instead of a text area
+            JPanel reportPanel = new JPanel(new BorderLayout());
+            reportPanel.add(new JScrollPane(reportTable), BorderLayout.CENTER);
+            tabbedPane.addTab("Reports", reportPanel);
+
+            JPanel vendorPanel = new JPanel(new GridLayout(3, 2, 10, 10));
+            vendorPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+            vendorPanel.setBackground(new Color(240, 240, 255));
+
+            JTextField vendorNameField = new JTextField();
+            JComboBox<String> vendorTypeComboBox = new JComboBox<>(new String[]{"Local", "International"});
+            JButton addVendorButton = createStyledButton("Add Vendor", new Color(70, 130, 180), Color.WHITE);
+
+            vendorPanel.add(new JLabel("Vendor Name:"));
+            vendorPanel.add(vendorNameField);
+            vendorPanel.add(new JLabel("Vendor Type:"));
+            vendorPanel.add(vendorTypeComboBox);
+            vendorPanel.add(addVendorButton);
+
+            tabbedPane.addTab("Vendor Management", vendorPanel);
+
+            addVendorButton.addActionListener(e -> {
+                String name = vendorNameField.getText().trim();
+                String type = (String) vendorTypeComboBox.getSelectedItem();
+                if (name.isEmpty()) {
+                    JOptionPane.showMessageDialog(mainFrame, "Vendor name cannot be empty!", "Error", JOptionPane.ERROR_MESSAGE);
+                } else {
+                    vendors.add(new Vendor(name, type));
+                    JOptionPane.showMessageDialog(mainFrame, "Vendor added successfully!");
+                }
+            });
+
+            JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
+            buttonPanel.setBackground(new Color(240, 240, 240));
+            JButton addProductButton = createStyledButton("Add Product", new Color(60, 179, 113), Color.WHITE);
+            JButton generateReportButton = createStyledButton("Generate Report", new Color(255, 165, 0), Color.WHITE);
+
+            addProductButton.addActionListener(e -> showAddProductDialog(mainFrame));
+            generateReportButton.addActionListener(e -> generateReport());
+
+            buttonPanel.add(addProductButton);
+            buttonPanel.add(generateReportButton);
+
+            mainFrame.add(tabbedPane, BorderLayout.CENTER);
+            mainFrame.add(buttonPanel, BorderLayout.SOUTH);
+
+            initializeVendors();
+
+            mainFrame.setVisible(true);
+        });
+    }
+
+    private static JButton createStyledButton(String text, Color bgColor, Color fgColor) {
+        JButton button = new JButton(text);
+        button.setBackground(bgColor);
+        button.setForeground(fgColor);
+        button.setFont(new Font("Arial", Font.BOLD, 14));
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createLineBorder(bgColor.darker(), 1));
+        return button;
+    }
+
+    private static void showAddProductDialog(JFrame parent) {
+        JDialog dialog = new JDialog(parent, "Add Product", true);
+        dialog.setSize(500, 400);
+        dialog.setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+
+        dialog.getContentPane().setBackground(new Color(70, 130, 180)); // Light Blue background
+        dialog.setTitle("Add Product");
+
+        JComboBox<String> categoryBox = new JComboBox<>(new String[]{"Electronics", "Furniture", "Groceries"});
+        JTextField nameField = new JTextField(20);
+        JTextField priceField = new JTextField(20);
+        JComboBox<Vendor> vendorBox = new JComboBox<>(vendors.toArray(new Vendor[0]));
+        JButton addButton = createStyledButton("Add Product", new Color(34, 139, 34), Color.WHITE);
+        JButton resetButton = createStyledButton("Reset", new Color(220, 20, 60), Color.WHITE);
+
+        gbc.gridx = 0; gbc.gridy = 0;
+        dialog.add(new JLabel("Category:"), gbc);
+        gbc.gridx = 1; gbc.gridy = 0;
+        dialog.add(categoryBox, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 1;
+        dialog.add(new JLabel("Name:"), gbc);
+        gbc.gridx = 1; gbc.gridy = 1;
+        dialog.add(nameField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 2;
+        dialog.add(new JLabel("Price:"), gbc);
+        gbc.gridx = 1; gbc.gridy = 2;
+        dialog.add(priceField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 3;
+        dialog.add(new JLabel("Vendor:"), gbc);
+        gbc.gridx = 1; gbc.gridy = 3;
+        dialog.add(vendorBox, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 4;
+        dialog.add(addButton, gbc);
+        gbc.gridx = 1; gbc.gridy = 4;
+        dialog.add(resetButton, gbc);
+
+        addButton.addActionListener(e -> {
+            String category = (String) categoryBox.getSelectedItem();
+            String name = nameField.getText().trim();
+            String priceText = priceField.getText().trim();
+            Vendor vendor = (Vendor) vendorBox.getSelectedItem();
+
+            if (name.isEmpty() || priceText.isEmpty() || vendor == null) {
+                JOptionPane.showMessageDialog(dialog, "All fields must be filled!", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            try {
+                double price = Double.parseDouble(priceText);
+                Item item = new Electronics(name, price, vendor);
+                InventoryManager.getInstance().addItem(item);
+                updateInventoryDisplay();
+                dialog.dispose();
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(dialog, "Invalid price value!", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        resetButton.addActionListener(e -> {
+            nameField.setText("");
+            priceField.setText("");
+        });
+
+        dialog.setVisible(true);
+    }
+
+    private static void updateInventoryDisplay() {
+        inventoryArea.setText("");
+        InventoryManager.getInstance().getInventory().values().forEach(item -> inventoryArea.append(item + "\n"));
+    }
+
+    private static void generateReport() {
+        reportTableModel.setRowCount(0); // Clear existing data in the table
+        for (Item item : InventoryManager.getInstance().getInventory().values()) {
+            // Add item data as a new row in the table
+            reportTableModel.addRow(new Object[]{
+                item.getName(),
+                String.format("$%.2f", item.getPrice()),
+                item.getVendor().toString()
+            });
+        }
+    }
+
+    private static void initializeVendors() {
+        vendors.add(new Vendor("Vendor 1", "Local"));
+        vendors.add(new Vendor("Vendor 2", "International"));
+    }
+}
